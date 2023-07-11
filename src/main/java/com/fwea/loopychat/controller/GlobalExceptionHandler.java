@@ -1,11 +1,13 @@
 package com.fwea.loopychat.controller;
 
+import com.fwea.loopychat.AppException;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
-public class ExceptionHandler {
+public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(AppException.class)
     public AppExceptionResponse handleAppException(AppException e) {
