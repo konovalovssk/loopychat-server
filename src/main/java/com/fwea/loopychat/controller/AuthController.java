@@ -43,18 +43,7 @@ public class AuthController {
             throw new AppException("Invalid username or password");
         }
 
-        try {
-            request.login(form.getUsername(), form.getPassword());
-        } catch (ServletException e) {
-            throw new AppException("Invalid username or password");
-        }
-
-        var auth = (Authentication) request.getUserPrincipal();
-        var user = (User) auth.getPrincipal();
-        log.info("User '{}' logged in", user.getUsername());
-
-        rememberMeServices.loginSuccess(request, response, auth);
-        return new CurrentUser(user.getId(), user.getUsername());
+        return makeLogin(form.getUsername(), form.getPassword(), request, response);
     }
 
     @PostMapping("/logout")
@@ -63,8 +52,9 @@ public class AuthController {
         return new LogoutResponse();
     }
 
-    @PostMapping("/register")
-    public CurrentUser register(@Valid @RequestBody RegisterForm form, BindingResult bindingResult) {
+    @PostMapping("/signup")
+    public CurrentUser signup(@Valid @RequestBody RegisterForm form, BindingResult bindingResult,
+                              HttpServletRequest request, HttpServletResponse response) throws AppException {
         log.info("User '{}' register.", form.toString());
         if (userRepository.findByUsername(form.getUsername()).isPresent()) {
             throw new AppException("Username already used");
@@ -77,20 +67,35 @@ public class AuthController {
         user.setCreatedAt(new Date());
         user.setUpdatedAt(new Date());
 
-        User registered;
         try {
-            registered = userRepository.save(user);
+            userRepository.save(user);
         } catch (Exception e) {
             throw new AppException("Internal server error");
         }
 
-        return new CurrentUser(registered.getId(), registered.getUsername());
+        return makeLogin(form.getUsername(), form.getPassword(), request, response);
     }
 
     @GetMapping("/csrf")
     public CsrfResponse csrf(HttpServletRequest request) {
         var csrf = (CsrfToken) request.getAttribute("_csrf");
         return new CsrfResponse(csrf.getHeaderName(), csrf.getToken());
+    }
+
+    private CurrentUser makeLogin(String username, String password,
+                                  HttpServletRequest request, HttpServletResponse response) throws AppException {
+        try {
+            request.login(username, password);
+        } catch (ServletException e) {
+            throw new AppException("Invalid username or password");
+        }
+
+        var auth = (Authentication) request.getUserPrincipal();
+        var user = (User) auth.getPrincipal();
+        log.info("User '{}' logged in", user.getUsername());
+
+        rememberMeServices.loginSuccess(request, response, auth);
+        return new CurrentUser(user.getId(), user.getUsername());
     }
 
     public record CsrfResponse(String headerName, String token) {}
